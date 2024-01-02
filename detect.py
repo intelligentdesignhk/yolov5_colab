@@ -7,7 +7,7 @@ from pathlib import Path
 
 import torch
 
-ROOT = "/content/yolov5" # YOLOv5 root directory
+ROOT = "/content/yolov5_colab" # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
@@ -15,11 +15,53 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 from ultralytics.utils.plotting import Annotator, colors, save_one_box
 
 from models.common import DetectMultiBackend
-from utils.dataloaders_colab import IMG_FORMATS, VID_FORMATS, LoadImages, LoadScreenshots, LoadStreams
+from utils.dataloaders_colab import IMG_FORMATS, VID_FORMATS, LoadImages
 from utils.general import (LOGGER, Profile, check_file, check_img_size, check_imshow, check_requirements, colorstr, cv2,
                            increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh)
 from utils.torch_utils import select_device, smart_inference_mode
 
+from IPython.display import display, Javascript
+from google.colab.output import eval_js
+from base64 import b64decode
+
+def take_photo(filename='photo.jpg', quality=0.8):
+  js = Javascript('''
+    async function takePhoto(quality) {
+      const div = document.createElement('div');
+      const capture = document.createElement('button');
+      capture.textContent = 'Capture';
+      div.appendChild(capture);
+
+      const video = document.createElement('video');
+      video.style.display = 'block';
+      const stream = await navigator.mediaDevices.getUserMedia({video: true});
+
+      document.body.appendChild(div);
+      div.appendChild(video);
+      video.srcObject = stream;
+      await video.play();
+
+      // Resize the output to fit the video element.
+      google.colab.output.setIframeHeight(document.documentElement.scrollHeight, true);
+
+      // Wait for Capture to be clicked.
+      await new Promise((resolve) => capture.onclick = resolve);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      stream.getVideoTracks()[0].stop();
+      div.remove();
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+    ''')
+  display(js)
+  data = eval_js('takePhoto({})'.format(quality))
+  binary = b64decode(data.split(',')[1])
+  with open(filename, 'wb') as f:
+    f.write(binary)
+  return filename
 
 @smart_inference_mode()
 def run(
@@ -56,8 +98,18 @@ def run(
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
-    webcam = source.isnumeric() or source.endswith('.streams') or (is_url and not is_file)
-    screenshot = source.lower().startswith('screen')
+    # webcam = source.isnumeric() or source.endswith('.streams') or (is_url and not is_file)
+    screenshot = source.lower().startswith('screen') or source.isnumeric() or source.endswith('.streams') or (is_url and not is_file)
+    webcam = False
+    screenshot = False
+
+
+    try:
+        filename = take_photo()
+    except Exception as err:
+        print(str(err))
+    source = str(filename)
+    
     if is_url and is_file:
         source = check_file(source)  # download
 
@@ -73,14 +125,7 @@ def run(
 
     # Dataloader
     bs = 1  # batch_size
-    if webcam:
-        # view_img = check_imshow(warn=True)
-        dataset = LoadStreams(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
-        bs = len(dataset)
-    elif screenshot:
-        dataset = LoadScreenshots(source, img_size=imgsz, stride=stride, auto=pt)
-    else:
-        dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
+    dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt, vid_stride=vid_stride)
     vid_path, vid_writer = [None] * bs, [None] * bs
 
     # Run inference
@@ -169,12 +214,10 @@ def run(
             # Stream results
             im0 = annotator.result()
             if view_img:
-                if platform.system() == 'Linux' and p not in windows:
-                    windows.append(p)
-                    cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
-                    cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
-                cv2.imshow(str(p), im0)
-                cv2.waitKey(1)  # 1 millisecond
+                try:
+                  display(Image(im0))
+                except Exception as err:
+                  print(str(err))
 
             # Save results (image with detections)
             if save_img:

@@ -282,6 +282,7 @@ class LoadImages:
     def __init__(self, path, img_size=640, stride=32, auto=True, transforms=None, vid_stride=1):
         if isinstance(path, str) and Path(path).suffix == '.txt':  # *.txt file with img/vid/dir on each line
             path = Path(path).read_text().rsplit()
+
         files = []
         for p in sorted(path) if isinstance(path, (list, tuple)) else [path]:
             p = str(Path(p).resolve())
@@ -359,9 +360,17 @@ class LoadImages:
         return path, im, im0, self.cap, s
 
     def _new_video(self, path):
+
+        try:
+            filename = take_photo()
+            # frame = cv2.imread(filename) 
+        except Exception as err:
+            print(str(err))
+
+        self.cap = cv2.VideoCapture(filename)
         # Create a new video capture object
         self.frame = 0
-        self.cap = cv2.VideoCapture(path)
+        # self.cap = cv2.VideoCapture(path)
         self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) / self.vid_stride)
         self.orientation = int(self.cap.get(cv2.CAP_PROP_ORIENTATION_META))  # rotation degrees
         # self.cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)  # disable https://github.com/ultralytics/yolov5/issues/8493
@@ -407,11 +416,11 @@ class LoadStreams:
 
             try:
                 filename = take_photo()
-                frame = cv2.imread(filename) 
+                # frame = cv2.imread(filename) 
             except Exception as err:
                 print(str(err))
 
-            cap = cv2.VideoCapture(frame)
+            cap = cv2.VideoCapture(filename)
             assert cap.isOpened(), f'{st}Failed to open {s}'
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
