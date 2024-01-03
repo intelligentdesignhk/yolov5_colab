@@ -7,6 +7,9 @@ from pathlib import Path
 
 import torch
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
 ROOT = "/content/yolov5_colab" # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
@@ -67,7 +70,7 @@ def take_photo(filename='photo.jpg', quality=0.8):
 def run(
         weights=ROOT / 'yolov5s.pt',  # model path or triton URL
         source=0,  # file/dir/URL/glob/screen/0(webcam)
-        data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
+        data=ROOT / 'data/coco_idt128.yaml',  # dataset.yaml path
         imgsz=(640, 640),  # inference size (height, width)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
@@ -249,10 +252,23 @@ def run(
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
     if update:
         strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
+    
+    return save_dir
+
+def pltimg(path):
+    try:
+        img = mpimg.imread(path)
+        plt.imshow(img)
+        plt.axis('off')
+        plt.show()
+    except Exception as err:
+        print(str(err))
 
 def main():
     check_requirements(ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
-    run()
+    resultpath = run()
+    files = [f for f in os.listdir(resultpath) if os.path.isfile(os.path.join(resultpath, f))]
+    pltimg(files[0])
 
 
 if __name__ == '__main__':
