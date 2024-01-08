@@ -51,7 +51,6 @@ from utils.general import (LOGGER, Profile, check_file, check_img_size, check_im
                            increment_path, non_max_suppression, print_args, scale_boxes, strip_optimizer, xyxy2xywh)
 from utils.torch_utils import select_device, smart_inference_mode
 
-from google.colab.patches import cv2_imshow
 
 @smart_inference_mode()
 def run(
@@ -63,7 +62,7 @@ def run(
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        view_img=True,  # show results
+        view_img=False,  # show results
         save_txt=False,  # save results to *.txt
         save_csv=False,  # save results in CSV format
         save_conf=False,  # save confidences in --save-txt labels
@@ -179,8 +178,6 @@ def run(
                 for *xyxy, conf, cls in reversed(det):
                     c = int(cls)  # integer class
                     label = names[c] if hide_conf else f'{names[c]}'
-                    if str(label) == 'others':
-                        continue
                     confidence = float(conf)
                     confidence_str = f'{confidence:.2f}'
 
@@ -203,14 +200,12 @@ def run(
             # Stream results
             im0 = annotator.result()
             if view_img:
-                cv2_imshow(im0)
-            # if view_img:
-            #     if platform.system() == 'Linux' and p not in windows:
-            #         windows.append(p)
-            #         cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
-            #         cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
-            #     cv2.imshow(str(p), im0)
-            #     cv2.waitKey(1)  # 1 millisecond
+                if platform.system() == 'Linux' and p not in windows:
+                    windows.append(p)
+                    cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
+                    cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
+                cv2.imshow(str(p), im0)
+                cv2.waitKey(1)  # 1 millisecond
 
             # Save results (image with detections)
             if save_img:
